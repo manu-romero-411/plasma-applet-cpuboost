@@ -1,0 +1,1 @@
+SUBSYSTEM=="cpu", ACTION=="add", RUN+="/bin/chgrp cpufreq /sys%p/cpufreq/scaling_max_freq", RUN+="/bin/chmod g+w /sys%p/cpufreq/scaling_max_freq"

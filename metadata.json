@@ -1,0 +1,11 @@
+{
+  "KPlugin": {
+    "Id": "org.manuromero411.turboboost",
+    "Name": "CPU Boost Toggle",
+    "Description": "Toggle CPU boost by capping scaling_max_freq at the nominal frequency",
+    "Icon": "power-profile-performance-symbolic",
+    "Version": "1"
+  },
+  "X-Plasma-API-Minimum-Version": "6.0",
+  "KPackageStructure": "Plasma/Applet"
+}
