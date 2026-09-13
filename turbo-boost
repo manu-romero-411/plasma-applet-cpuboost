@@ -6,22 +6,18 @@
 check_freq() {
     printf "%-8s %-10s %-10s %-10s %-10s\n" "CPU" "CURRENT" "MIN" "MAX" "NOMINAL"
     printf "%-8s %-10s %-10s %-10s %-10s\n" "---" "-------" "---" "---" "-------"
-
     for policy in /sys/devices/system/cpu/cpufreq/policy*; do
         local cpu_num
         cpu_num=$(basename "$policy" | tr -dc '0-9')
         local cppc="/sys/devices/system/cpu/cpu${cpu_num}/acpi_cppc"
-
         local cur min max nominal
-        cur=$(( $(cat "$policy/scaling_cur_freq") / 1000 ))
-        min=$(( $(cat "$policy/scaling_min_freq") / 1000 ))
-        max=$(( $(cat "$policy/scaling_max_freq") / 1000 ))
+        cur=$(($(cat "$policy/scaling_cur_freq") / 1000))
+        min=$(($(cat "$policy/scaling_min_freq") / 1000))
+        max=$(($(cat "$policy/scaling_max_freq") / 1000))
         nominal="-"
         [ -r "$cppc/nominal_freq" ] && nominal=$(cat "$cppc/nominal_freq")
-
         printf "%-8s %-10s %-10s %-10s %-10s\n" "cpu${cpu_num}" "${cur}MHz" "${min}MHz" "${max}MHz" "${nominal}MHz"
     done | sort -t u -k2 -n
-
     echo
     echo "global boost: $(cat /sys/devices/system/cpu/cpufreq/boost 2>/dev/null || echo 'n/a')"
 }
@@ -29,16 +25,13 @@ check_freq() {
 is_enabled() {
     local policy0="/sys/devices/system/cpu/cpufreq/policy0"
     local cppc="/sys/devices/system/cpu/cpu0/acpi_cppc"
-
     if [ ! -r "$cppc/nominal_freq" ]; then
         echo "unknown"
         return 1
     fi
-
     local cur_max nominal_khz
     cur_max=$(cat "$policy0/scaling_max_freq")
-    nominal_khz=$(( $(cat "$cppc/nominal_freq") * 1000 ))
-
+    nominal_khz=$(($(cat "$cppc/nominal_freq") * 1000))
     if [ "$cur_max" -gt "$nominal_khz" ]; then
         echo "enabled"
     else
@@ -52,31 +45,53 @@ apply() {
         local cpu_num
         cpu_num=$(basename "$policy" | tr -dc '0-9')
         local cppc="/sys/devices/system/cpu/cpu${cpu_num}/acpi_cppc"
-
         if [ "$mode" = "off" ] && [ -r "$cppc/nominal_freq" ]; then
-            local nominal_khz=$(( $(cat "$cppc/nominal_freq") * 1000 ))
-            echo "$nominal_khz" | tee "$policy/scaling_max_freq" > /dev/null
+            local nominal_khz=$(($(cat "$cppc/nominal_freq") * 1000))
+            echo "$nominal_khz" | tee "$policy/scaling_max_freq" >/dev/null
         else
-            cat "$policy/cpuinfo_max_freq" | tee "$policy/scaling_max_freq" > /dev/null
+            cat "$policy/cpuinfo_max_freq" | tee "$policy/scaling_max_freq" >/dev/null
         fi
     done
 }
 
+# New function to let the applet get all information at once
+get_info() {
+    local policy0="/sys/devices/system/cpu/cpufreq/policy0"
+    local cppc="/sys/devices/system/cpu/cpu0/acpi_cppc"
+    local state cur_max cpu_max nominal
+
+    state=$(is_enabled)
+    cur_max=$(cat "$policy0/scaling_max_freq" 2>/dev/null || echo 0)
+    cpu_max=$(cat "$policy0/cpuinfo_max_freq" 2>/dev/null || echo 0)
+    nominal=0
+    [ -r "$cppc/nominal_freq" ] && nominal=$(cat "$cppc/nominal_freq")
+
+    # Returns: state current_max_kHz max_boost_kHz nominal_mHz
+    echo "$state $cur_max $cpu_max $nominal"
+}
+
 case $1 in
-    "check-freq"|"status"|"check")
-        check_freq
-        exit 0
-        ;;
-    "is-enabled")
-        is_enabled
-        exit 0
-        ;;
+"check-freq" | "status" | "check")
+    check_freq
+    exit 0
+    ;;
+"is-enabled")
+    is_enabled
+    exit 0
+    ;;
+"info")
+    get_info
+    exit 0
+    ;;
 esac
 
 case $1 in
-    "on"|"enable"|"1")  apply on ;;
-    "off"|"disable"|"0") apply off ;;
-    *) echo "Usage: $0 {on|off|1|0|enable|disable|check-freq|is-enabled}"; exit 1 ;;
+"on" | "enable" | "1") apply on ;;
+"off" | "disable" | "0") apply off ;;
+*)
+    echo "Usage: $0 {on|off|1|0|enable|disable|check-freq|is-enabled|info}"
+    exit 1
+    ;;
 esac
 
 exit 0
