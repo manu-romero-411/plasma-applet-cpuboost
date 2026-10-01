@@ -11,10 +11,13 @@ PlasmoidItem {
     property bool boostEnabled: true
     property bool ready: false
 
-    // Properties to store frequencies in their original units (KHz and MHz)
     property int currentMaxKHz: 0
     property int cpuMaxKHz: 0
     property int nominalMHz: 0
+
+    Plasmoid.icon: root.boostEnabled
+    ? "battery-profile-performance-symbolic"
+    : "battery-profile-powersave-symbolic"
 
     Plasma5Support.DataSource {
         id: exec
@@ -44,7 +47,6 @@ PlasmoidItem {
         var newState = !root.boostEnabled
         root.boostEnabled = newState
         exec.connectSource("/usr/local/bin/turbo-boost " + (newState ? "on" : "off"))
-        // Refresh quickly so the 'Current' frequency updates immediately
         refreshTimer.start()
     }
 
@@ -64,27 +66,30 @@ PlasmoidItem {
 
     Component.onCompleted: root.refresh()
 
-    compactRepresentation: MouseArea {
+    compactRepresentation: Item {
         id: compactRoot
-        Layout.minimumWidth: icon.implicitWidth + Kirigami.Units.smallSpacing * 2
-        Layout.minimumHeight: icon.implicitHeight + Kirigami.Units.smallSpacing * 2
+
+        // Ancho forzado para ensanchar la hitbox
+        Layout.minimumWidth: Kirigami.Units.gridUnit * 1.8
         Layout.preferredWidth: Layout.minimumWidth
 
-        onClicked: root.expanded = !root.expanded
-
         Kirigami.Icon {
-            id: icon
             anchors.centerIn: parent
-            width: Kirigami.Units.iconSizes.small
-            height: width
-            source: root.boostEnabled
-            ? "battery-profile-performance-symbolic"
-            : "battery-profile-powersave-symbolic"
+            width: compactRoot.height
+            height: compactRoot.height
+            source: Plasmoid.icon
+            active: mouseArea.containsMouse
+        }
+
+        MouseArea {
+            id: mouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            onClicked: root.expanded = !root.expanded
         }
     }
 
     fullRepresentation: Item {
-        // Increase minimum width slightly to fit the frequency text
         Layout.minimumWidth: Kirigami.Units.gridUnit * 14
         Layout.preferredWidth: Layout.minimumWidth
         Layout.maximumWidth: Layout.minimumWidth
@@ -111,7 +116,6 @@ PlasmoidItem {
                 onToggled: root.toggle()
             }
 
-            // Current max frequency
             PlasmaComponents.Label {
                 Layout.alignment: Qt.AlignHCenter
                 visible: root.ready
@@ -119,7 +123,6 @@ PlasmoidItem {
                 opacity: 0.8
             }
 
-            // Base and max boost frequency
             PlasmaComponents.Label {
                 Layout.alignment: Qt.AlignHCenter
                 visible: root.ready
